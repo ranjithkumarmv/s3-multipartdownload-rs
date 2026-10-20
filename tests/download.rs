@@ -416,10 +416,17 @@ async fn rejects_invalid_options() {
 // ---- CLI ----
 
 async fn run_cli(args: &[&str], cwd: &Path) -> (i32, String, String) {
-    let out = tokio::process::Command::new(env!("CARGO_BIN_EXE_s3-multipartdownload"))
+    let mut cmd = tokio::process::Command::new(env!("CARGO_BIN_EXE_s3-multipartdownload"));
+    // Drop the developer's AWS settings but keep the rest of the environment:
+    // Windows cannot open sockets without variables such as SystemRoot.
+    for (name, _) in std::env::vars_os() {
+        if name.to_string_lossy().starts_with("AWS_") {
+            cmd.env_remove(name);
+        }
+    }
+    let out = cmd
         .args(args)
         .current_dir(cwd)
-        .env_clear()
         .env("AWS_ACCESS_KEY_ID", "test")
         .env("AWS_SECRET_ACCESS_KEY", "test")
         .env("AWS_REGION", "us-east-1")

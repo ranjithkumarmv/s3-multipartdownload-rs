@@ -1,6 +1,6 @@
 [package]
 name = "s3-multipartdownload"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 rust-version = "1.94"
 description = "Fast parallel S3 downloads: split large Amazon S3 objects into byte ranges, fetch them concurrently with the AWS SDK for Rust and write each straight to its offset on disk, with retries, progress and cancellation. Library and CLI."

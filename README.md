@@ -12,6 +12,8 @@ Splits large Amazon S3 objects into byte ranges, fetches them concurrently with 
 
 Rust port of the [`s3-multipartdownload`](https://github.com/ranjithkumarmv/s3-multipartdownload) npm package. It has the same behaviour and CLI flags, with no Node.js or AWS CLI needed.
 
+**Up to 8.9× faster than a single stream** ([simulated benchmark](#benchmarks)) · ~25–40 MB of memory · one static binary
+
 </div>
 
 ## Install the command
@@ -29,8 +31,11 @@ It installs to `~/.local/bin` (change it with `INSTALL_DIR=...`) and checks the 
 **With Cargo:**
 
 ```bash
-cargo install s3-multipartdownload
+cargo binstall s3-multipartdownload   # prebuilt binary in seconds (needs cargo-binstall)
+cargo install s3-multipartdownload    # or compile from source (a few minutes)
 ```
+
+Cargo has no `npx`-style "run without installing". [`cargo binstall`](https://github.com/cargo-bins/cargo-binstall) is the closest: it fetches the same prebuilt release binary instead of compiling.
 
 ## Use the command
 
@@ -111,6 +116,34 @@ If the bucket is in another region than the client, `send()` returns `Error::Wro
 3. Ranges are fetched by up to `parallel` tasks. Each request sends `If-Match: <ETag>`, so all the bytes come from the same object version.
 4. A failed range is **retried with backoff**, including one that fails mid-stream, and its progress is rolled back. On a fatal error, ranges still running are cancelled and the temp file is deleted.
 5. On success the temp file is **renamed** to the final name.
+
+## Benchmarks
+
+**500 MB object**, median of 5 runs, every output checked with SHA-256 ([full results](./bench/results/RESULTS.md)):
+
+| Strategy | Time | Throughput | Speed-up | CPU time | Peak memory |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Single stream (baseline) | 14.43 s | 34.7 MB/s | 1.00× | 1.40 s | 20 MB |
+| Rust ×4 | 4.35 s | 114.9 MB/s | 3.32× | 1.07 s | 28 MB |
+| Rust ×8 | 2.47 s | 202.4 MB/s | 5.84× | 1.09 s | 28 MB |
+| **Rust ×16** | **1.63 s** | **306.7 MB/s** | **8.85×** | 1.12 s | **38 MB** |
+| Node.js npm CLI ×16 | 1.65 s | 303.0 MB/s | 8.75× | 1.17 s | 112 MB |
+
+**100 MB object:** 3.06 s → 0.49 s (**6.24×**) with Rust ×16, in 24 MB of memory. The Node CLI took 0.43 s with 114 MB.
+
+**What this shows:**
+- Parallel ranges give the speed-up. Rust and Node reach about the same throughput, because the network is the limit.
+- The Rust binary uses **3–5× less memory** than the Node CLI and slightly less CPU. It also needs no runtime, which helps on small containers, Lambda and CI runners.
+
+> [!NOTE]
+> **These numbers come from a simulation, not live S3.** The benchmark runs a local S3-compatible server that caps each connection at 40 MB/s, total bandwidth at 400 MB/s, and adds 20 ms of latency per request. It ran on an Apple M1 (8 cores), with s3-multipartdownload 0.1.0 and npm CLI 2.1.0 on Node 22. Each trial is a fresh process timed by `/usr/bin/time`, so startup counts. Real-world gains depend on your network, region and instance type.
+
+Reproduce it (needs Node.js for the mock server; `--node-cli` is optional):
+
+```bash
+cargo build --release
+node bench/benchmark.js --runs 5 --node-cli path/to/s3-multipartdownload/cli.js
+```
 
 ## Choosing `--parallel` and `--part-size`
 

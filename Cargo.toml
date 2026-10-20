@@ -11,7 +11,7 @@ documentation = "https://docs.rs/s3-multipartdownload"
 readme = "README.md"
 keywords = ["s3", "aws", "download", "parallel", "cli"]
 categories = ["command-line-utilities", "network-programming", "filesystem"]
-exclude = ["/.github"]
+exclude = ["/.github", "/bench"]
 
 [lib]
 name = "s3_multipartdownload"
@@ -36,6 +36,17 @@ clap = { version = "4.6.7", features = ["derive"], optional = true }
 [dev-dependencies]
 aws-config = { version = "1.12.0", features = ["behavior-version-latest"] }
 tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "net", "io-util", "process", "time"] }
+
+# `cargo binstall s3-multipartdownload` downloads the prebuilt binary from the
+# GitHub release instead of compiling.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }.tar.gz"
+bin-dir = "{ name }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }.zip"
+pkg-fmt = "zip"
 
 [profile.release]
 lto = "thin"

@@ -1,0 +1,43 @@
+[package]
+name = "s3-multipartdownload"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.94"
+description = "Fast parallel S3 downloads: split large Amazon S3 objects into byte ranges, fetch them concurrently with the AWS SDK for Rust and write each straight to its offset on disk, with retries, progress and cancellation. Library and CLI."
+license = "MIT"
+repository = "https://github.com/ranjithkumarmv/s3-multipartdownload-rs"
+homepage = "https://github.com/ranjithkumarmv/s3-multipartdownload-rs"
+documentation = "https://docs.rs/s3-multipartdownload"
+readme = "README.md"
+keywords = ["s3", "aws", "download", "parallel", "cli"]
+categories = ["command-line-utilities", "network-programming", "filesystem"]
+exclude = ["/.github"]
+
+[lib]
+name = "s3_multipartdownload"
+
+[[bin]]
+name = "s3-multipartdownload"
+path = "src/main.rs"
+required-features = ["cli"]
+
+[features]
+default = ["cli"]
+# The command-line tool. Library users can opt out with `default-features = false`.
+cli = ["dep:clap", "dep:aws-config", "tokio/rt-multi-thread", "tokio/macros", "tokio/signal"]
+
+[dependencies]
+aws-sdk-s3 = "1.152.0"
+thiserror = "2.0.21"
+tokio = { version = "1.54.0", features = ["rt", "fs", "io-util", "time"] }
+aws-config = { version = "1.12.0", features = ["behavior-version-latest"], optional = true }
+clap = { version = "4.6.7", features = ["derive"], optional = true }
+
+[dev-dependencies]
+aws-config = { version = "1.12.0", features = ["behavior-version-latest"] }
+tokio = { version = "1.54.0", features = ["rt-multi-thread", "macros", "net", "io-util", "process", "time"] }
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
